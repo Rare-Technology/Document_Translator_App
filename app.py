@@ -69,6 +69,10 @@ else:
                 f.write(uploaded_file.getbuffer())
 
             try:
+                # if directory exists:
+                    # define output_path
+                # else:
+                    # mkdir and define path
                 output_path = f"files\\{selected_language}_{uploaded_file.name}"
 
                 # translation
