@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-WORKDIR /app/DocTranslator_App
+WORKDIR /app/Document_Translator_App
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/Rare-Technology/DocTranslator_App.git .
+RUN git clone https://github.com/Rare-Technology/Document_Translator_App.git .
 
 RUN pip3 install -r requirements.txt
 
@@ -17,4 +17,4 @@ EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "app.py"]
+ENTRYPOINT ["streamlit", "run", "translator.py"]

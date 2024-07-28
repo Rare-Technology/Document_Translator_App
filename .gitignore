@@ -1,4 +1,4 @@
 .env
 test.ipynb
 /configs
-test.py
+app.py

@@ -12,12 +12,12 @@ from dotenv import load_dotenv
 import traceback
 import logging
 
-load_dotenv()
+load_dotenv("configs/app.env")
 auth_key = os.getenv("DEEPL_API_KEY")
 
 translator = deepl.Translator(auth_key=auth_key)
 
-st.image("images\\4729_Brand_USA - HQ_Rare_RGB_Digital_Use.jpg", width=50)
+st.image("images/4729_Brand_USA - HQ_Rare_RGB_Digital_Use.jpg", width=50)
 st.header("The Translator")
 
 selected_language = st.selectbox("Select Target Language:",
@@ -36,15 +36,15 @@ map = {
 target_language = map.get(selected_language)
 
 text_column, doc_column = st.columns(2)
-open_text_translation = text_column.button('Translate Text', type='primary', key='open text translator')
-open_doc_translation = doc_column.button(label="Translate Document", type='secondary', key='open document translator')
+open_text_translation = text_column.button('Translate Text', key='open text translator')
+open_doc_translation = doc_column.button(label="Translate Document", key='open document translator')
 
 # Text Translation
 if open_text_translation:
     st.subheader("Enter Text for Translation:")
 
     try:
-        text = st.text_area("Enter Text for translation to your target language and hit 'Ctrl + Enter'", value="")
+        text = st.text_area("Enter Text for translation to your target language and hit Translate Text", value="")
         text_result = translator.translate_text(text=text, target_lang=target_language)
         st.write(f"Translating input to {selected_language} ...")
         st.divider()
@@ -57,7 +57,7 @@ if open_text_translation:
         traceback.print_exc()
 
 # Document Translation
-else:
+elif open_doc_translation:
     st.subheader("Translate Documents")
     st.write("Ensure that your target language is different from the language of your document!")
     # The API also supports .docx, .pptx, .xlsx, .txt, PDF, and HTML files.
@@ -73,7 +73,7 @@ else:
                     # define output_path
                 # else:
                     # mkdir and define path
-                output_path = f"files\\{selected_language}_{uploaded_file.name}"
+                output_path = f"files/{selected_language}_{uploaded_file.name}"
 
                 # translation
                 translation_status = st.empty()
