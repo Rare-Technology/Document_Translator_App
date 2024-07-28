@@ -57,19 +57,19 @@ def document_translator():
     for uploaded_file in uploaded_files:
         doc_translate = st.button(f"Translate {uploaded_file.name}", key=f"{uploaded_file}_Begin Translation")
         if doc_translate:
-            with open(uploaded_file.name, "wb") as f:
+            with open(f"./{uploaded_file.name}", "wb") as f:
                 f.write(uploaded_file.getbuffer())
             try:
-                if not os.path.exists("/output_files"):
-                    os.makedirs("/output_files")
+                if not os.path.exists("./output_files"):
+                    os.makedirs("./output_files")
                 
-                output_path = f"output_files/{selected_language}_{uploaded_file.name}"
+                output_path = f"./output_files/{selected_language}_{uploaded_file.name}"
 
                 # translation
                 translation_status = st.empty()
                 translation_status.text("Translation in Progress....")
 
-                translator.translate_document_from_filepath(input_path=uploaded_file.name,
+                translator.translate_document_from_filepath(input_path=f"./{uploaded_file.name}",
                                             output_path=output_path,
                                             target_lang=target_language)
                 translation_status.empty()
