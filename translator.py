@@ -141,7 +141,6 @@ page_names_to_funcs = {
     "HomePage": home,
     "Document Translator": document_translator,
     "Text Translation": text_translator
-    
 }
 
 demo_name = st.sidebar.selectbox("Choose a Service", page_names_to_funcs.keys())
