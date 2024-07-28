@@ -139,8 +139,9 @@ def text_translator():
 
 page_names_to_funcs = {
     "HomePage": home,
-    "Text Translation": text_translator,
-    "Document Translator": document_translator
+    "Document Translator": document_translator,
+    "Text Translation": text_translator
+    
 }
 
 demo_name = st.sidebar.selectbox("Choose a Service", page_names_to_funcs.keys())
