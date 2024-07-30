@@ -13,6 +13,9 @@ RUN git clone https://github.com/Rare-Technology/Document_Translator_App.git .
 
 RUN pip3 install -r requirements.txt
 
+# make output directory in the container
+RUN mkdir -p /app/Document_Translator_App/output_files
+
 EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health

@@ -60,8 +60,9 @@ def document_translator():
             with open(f"./{uploaded_file.name}", "wb") as f:
                 f.write(uploaded_file.getbuffer())
             try:
-                if not os.path.exists("./output_files"):
-                    os.makedirs("./output_files")
+                output_dir = "./output_files"
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
                 
                 output_path = f"./output_files/{selected_language}_{uploaded_file.name}"
 
