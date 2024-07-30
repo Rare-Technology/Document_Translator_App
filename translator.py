@@ -182,7 +182,7 @@ def text_translator():
         traceback.print_exc()
 
 page_names_to_funcs = {
-    "HomePage": home,
+    "Home Page": home,
     "Document Translation": document_translator,
     "Text Translation": text_translator
 }
