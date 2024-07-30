@@ -6,7 +6,7 @@ st.image("images/4729_Brand_USA - HQ_Rare_RGB_Digital_Use.jpg", width=75)
 def home():
     st.sidebar.success("Select the translation service above.")
 
-    st.title("The Translator")
+    st.title("Rare's Translator")
 
     st.markdown(
         """
@@ -15,7 +15,7 @@ def home():
 
         It contains options for translating standalone text or documents into your desired language.
 
-        The sidebar contains options for selecting options for translating text and documents
+        The sidebar contains options for selecting the required service for translating text or documents.
         """
     )
 
@@ -33,12 +33,16 @@ def document_translator():
     auth_key = os.getenv("DEEPL_API_KEY")
 
     translator = deepl.Translator(auth_key=auth_key)
-
     st.header("Document Translator")
-    selected_language = st.selectbox("Select Target Language:",
-                       ("English (American)", "English (British)", "Japanese", "German", "French", "Portugese (Brazilian)", "Portugese (Except Brazilian)"), index=0)
+    st.write("Ensure that your target language is not same as the language of your document!")
 
-    st.write("Ensure that your target language is different from the language of your document!")
+    selected_language = st.selectbox("Select Target Language:",
+                       ("English (American)", "English (British)", 
+                        "Japanese", "German", "French", "Portugese (Brazilian)", 
+                        "Portugese (Except Brazilian)", "Spanish", "Finnish",
+                        "Indonesian", "Italian", "Latvian", "Dutch", "Polish",
+                        "Russian", "Slovenian", "Swedish", "Turkish", "Chinese (simplified)",
+                        "Chinese (traditional)"), index=0)
 
     map = {
         "English (American)": "EN-US",
@@ -47,13 +51,26 @@ def document_translator():
         "Japanese": "JA",
         "German": "DE",
         "Portugese (Except Brazilian)": "PT-PT",
-        "Portugese (Brazilian)": "PT-BR"
+        "Portugese (Brazilian)": "PT-BR",
+        "Spanish": "ES",
+        "Finnish": "FI",
+        "Indonesian": "ID",
+        "Italian": "IT",
+        "Latvian": "LV",
+        "Dutch": "NL",
+        "Polish": "PL",
+        "Russian": "RU",
+        "Slovenian": "SL",
+        "Swedish": "SV",
+        "Turkish": "TR",
+        "Chinese (simplified)": "ZH-HANS",
+        "Chinese (traditional)": "ZH-HANT"
     }
 
     target_language = map.get(selected_language)
     
     # The API also supports .docx, .pptx, .xlsx, .txt, PDF, and HTML files.
-    uploaded_files = st.file_uploader("Choose Files to Translate", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Choose Files to Translate (.pdf, .docx, .pptx, .txt files)", accept_multiple_files=True)
     for uploaded_file in uploaded_files:
         doc_translate = st.button(f"Translate {uploaded_file.name}", key=f"{uploaded_file}_Begin Translation")
         if doc_translate:
@@ -87,9 +104,15 @@ def document_translator():
 
                 if button:
                     os.remove(output_path)
+            except deepl.exceptions.DocumentTranslationException as doc_e:
+                # st.write(type(doc_e))
+                st.error(f"Error: {doc_e.args[0].split(':')[1]} \n\n Please choose a different target language from the one in your document. If the problem persists, try again.")
+                # traceback.print_exc()
+            except deepl.exceptions.DeepLException as g_e:
+                st.error(f'Error in translating document: \n\n {g_e.args[0].split(":")[1]} \n\n Please ensure you have uploaded the supported document types: pdf, docx, pptx, or txt. \nIf the problem persists, try again.', icon="🚨")
             except Exception as e:
-                st.error(f'The translation could not be completed. We encountered an error: \n{e}', icon="🚨")
-                traceback.print_exc()
+                st.error(f'Error in translating document: \n\n {e.args[0].split(":")[1]}', icon="🚨")
+                # traceback.print_exc()
             finally:
                 os.remove(uploaded_file.name)
 
@@ -109,7 +132,12 @@ def text_translator():
     st.header("Text Translator")
 
     selected_language = st.selectbox("Select Target Language:",
-                       ("English (American)", "English (British)", "Japanese", "German", "French", "Portugese (Brazilian)", "Portugese (Except Brazilian)"), index=0)
+                       ("English (American)", "English (British)", 
+                        "Japanese", "German", "French", "Portugese (Brazilian)", 
+                        "Portugese (Except Brazilian)", "Spanish", "Finnish",
+                        "Indonesian", "Italian", "Latvian", "Dutch", "Polish",
+                        "Russian", "Slovenian", "Swedish", "Turkish", "Chinese (simplified)",
+                        "Chinese (traditional)"), index=0)
 
     map = {
         "English (American)": "EN-US",
@@ -118,7 +146,20 @@ def text_translator():
         "Japanese": "JA",
         "German": "DE",
         "Portugese (Except Brazilian)": "PT-PT",
-        "Portugese (Brazilian)": "PT-BR"
+        "Portugese (Brazilian)": "PT-BR",
+        "Spanish": "ES",
+        "Finnish": "FI",
+        "Indonesian": "ID",
+        "Italian": "IT",
+        "Latvian": "LV",
+        "Dutch": "NL",
+        "Polish": "PL",
+        "Russian": "RU",
+        "Slovenian": "SL",
+        "Swedish": "SV",
+        "Turkish": "TR",
+        "Chinese (simplified)": "ZH-HANS",
+        "Chinese (traditional)": "ZH-HANT"
     }
 
     target_language = map.get(selected_language)
@@ -126,12 +167,14 @@ def text_translator():
     st.subheader("Enter Text for Translation:")
 
     try:
-        text = st.text_area("Enter Text for translation to your target language and hit Translate Text", value="")
-        text_result = translator.translate_text(text=text, target_lang=target_language)
-        st.write(f"Translating input to {selected_language} ...")
-        st.divider()
-        st.text(text_result)
-        st.divider()
+        text = st.text_area("Enter Text for translation to your target language and Click 'Translate text' button", value="")
+        text_translate = st.button("Translate text", key="Begin Text Translation")
+        if text_translate:
+            text_result = translator.translate_text(text=text, target_lang=target_language)
+            st.write(f"Translating input to {selected_language} ...")
+            st.divider()
+            st.text(text_result)
+            st.divider()
     except Exception as e:
         st.divider()
         st.write("Enter Text to translate")
@@ -140,7 +183,7 @@ def text_translator():
 
 page_names_to_funcs = {
     "HomePage": home,
-    "Document Translator": document_translator,
+    "Document Translation": document_translator,
     "Text Translation": text_translator
 }
 
