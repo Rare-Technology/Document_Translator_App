@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 # Set page config at the very beginning, removing the full-screen option
-st.set_page_config(page_title="Rare's Translator", page_icon="🌐", layout="wide", menu_items=None)
+st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="wide", menu_items=None)
 
 # Load environment variables
 load_dotenv("configs/app.env")
