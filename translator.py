@@ -8,7 +8,7 @@ st.set_page_config(page_title="Rare's Translator", page_icon="🌐", layout="wid
 
 # Load environment variables
 load_dotenv("configs/app.env")
-auth_key = os.getenv("72bebc3d-54b6-4a91-860e-fa8144474e11")
+auth_key = os.getenv("DEEPL_API_KEY")
 
 # Initialize DeepL translator
 translator = deepl.Translator(auth_key=auth_key)
