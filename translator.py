@@ -8,7 +8,7 @@ st.set_page_config(page_title="Rare's Translator", page_icon="🌐", layout="wid
 
 # Load environment variables
 load_dotenv("configs/app.env")
-auth_key = os.getenv("DEEPL_API_KEY")
+auth_key = os.getenv("72bebc3d-54b6-4a91-860e-fa8144474e11")
 
 # Initialize DeepL translator
 translator = deepl.Translator(auth_key=auth_key)
@@ -55,9 +55,9 @@ def add_custom_css():
 
     /* Target each tab button */
     [data-baseweb="tab-list"] button[role="tab"] {
-        font-size: 32px !important;  /* Increased font size */
+        font-size: 24px !important;  /* Increased font size */
         font-weight: bold !important;
-        padding: 5px 30px !important;
+        padding: 5px 20px !important;
         margin: 0 5px !important;
         border-radius: 10px 10px 0 0 !important;
         background-color: rgba(0, 0, 0, 0.05) !important;
@@ -257,11 +257,11 @@ def main():
 
     # Display the logo and title at the top
     st.image("images/4729_Brand_USA - HQ_Rare_RGB_Digital_Use.png", width=100)
-    st.title("Rare's Translator")
+    st.title("Rare Translation Tool")
     st.markdown("---")  # Separator
 
     # Create tabs
-    tabs = st.tabs(["Home", "Document Translation", "Text Translation"])
+    tabs = st.tabs(["🏠HOME", "🗂️ DOCUMENT TRANSLATION", "💬 TEXT TRANSLATION"])
 
     with tabs[0]:
         home()
