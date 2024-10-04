@@ -2,6 +2,7 @@ import streamlit as st
 import deepl
 import os
 from dotenv import load_dotenv
+from PIL import Image
 
 # Set page config at the very beginning, removing the full-screen option
 st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="wide", menu_items=None)
@@ -40,10 +41,18 @@ LANGUAGE_MAP = {
 def add_custom_css():
     st.markdown("""
     <style>
+    /* Adjust overall layout */
+    .stApp {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0.25rem 2rem;
+    }
+    
     /* Target the tab container */
     [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
         background-color: transparent;
-        padding: 10px 0;
+        padding: 0;
+        margin-top: -1rem;
     }
 
     /* Remove all default borders and outlines */
@@ -55,10 +64,10 @@ def add_custom_css():
 
     /* Target each tab button */
     [data-baseweb="tab-list"] button[role="tab"] {
-        font-size: 24px !important;  /* Increased font size */
+        font-size: 18px !important;
         font-weight: bold !important;
-        padding: 5px 20px !important;
-        margin: 0 5px !important;
+        padding: 5px 15px !important;
+        margin: 0 3px !important;
         border-radius: 10px 10px 0 0 !important;
         background-color: rgba(0, 0, 0, 0.05) !important;
         color: #999 !important;
@@ -75,7 +84,7 @@ def add_custom_css():
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        height: 4px !important;
+        height: 3px !important;
         background-color: #008542 !important;
     }
 
@@ -93,7 +102,7 @@ def add_custom_css():
     /* Adjust the content area of the tabs */
     [data-baseweb="tab-panel"] {
         background-color: transparent;
-        padding: 20px;
+        padding: 15px 0;
         border-radius: 0 0 10px 10px;
     }
 
@@ -105,14 +114,68 @@ def add_custom_css():
         border: none !important;
         height: 0 !important;
     }
+
+    /* Updated styles for the logo */
+    .logo-container {
+        position: absolute;
+        top: 0.25rem;
+        left: 1rem;
+        z-index: 1000;
+    }
+    .logo-container img {
+        height: 75px;
+        width: auto;
+    }
+    
+    /* Adjust header styles */
+    h1 {
+        font-size: 1.8rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    h2 {
+        font-size: 1.4rem !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Custom style for the header container */
+    .header-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding-top: 0.5rem;
+    }
+    
+    /* Adjust the main content area */
+    .main-content {
+        margin-top: 0.5rem;
+    }
+
+    /* Remove full-screen option for images */
+    button[title="View fullscreen"] {
+        display: none !important;
+    }
+
+    /* Remove link icons from headers */
+    .header-anchor {
+        display: none !important;
+    }
+
+    h1:hover .header-anchor,
+    h2:hover .header-anchor,
+    h3:hover .header-anchor,
+    h4:hover .header-anchor,
+    h5:hover .header-anchor,
+    h6:hover .header-anchor {
+        display: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-
 def home():
-    st.write("Welcome to the Rare Translator, a powerful tool for seamless language translation.")
-
-    st.header("Key Features:")
+    st.header("Key Features:", divider=True)
     st.write("🗂️ **Document Translation**: Translate various file formats with ease.")
     st.write("💬 **Text Translation**: Quick and accurate text snippet translations.")
 
@@ -122,36 +185,10 @@ def home():
     st.write("3. Upload a document or input your text.")
     st.write("4. Click translate and watch the magic happen!")
 
-    st.header("Supported Formats:")
-
-    # Using official icons for supported formats with adjusted size
-    st.markdown("""
-    <style>
-    .format-icon {
-        height: 20px;
-        width: 20px;
-        margin-right: 5px;
-        vertical-align: middle;
-    }
-    .format-text {
-        font-size: 16px;
-        vertical-align: middle;
-    }
-    </style>
-    <div style="margin-bottom:20px;">
-    <img src="https://img.icons8.com/color/48/000000/pdf.png" class="format-icon"/><span class="format-text">PDF</span>
-    <img src="https://img.icons8.com/color/48/000000/word.png" class="format-icon"/><span class="format-text">DOCX</span>
-    <img src="https://img.icons8.com/color/48/000000/powerpoint.png" class="format-icon"/><span class="format-text">PPTX</span>
-    <img src="https://img.icons8.com/color/48/000000/txt.png" class="format-icon"/><span class="format-text">TXT</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.info("Need help? Contact our support team for assistance.")
-
 def document_translator():
-    st.title("Document Translator")
+    st.header("Document Translator", divider=True)
     st.write("Upload your file and select the target language for translation.")
-    st.warning("Ensure your target language differs from the source language for accurate results.")
+    st.warning("Ensure your target language differs from the source language for accurate results.", icon="⚠️")
 
     selected_language = st.selectbox(
         "Target Language:",
@@ -168,6 +205,29 @@ def document_translator():
         key="document_file_uploader"
     )
 
+    st.header("Supported Formats:")
+
+    # Using official icons for supported formats with adjusted size
+    st.markdown("""
+    <style>
+    .format-icon {
+        height: 20px;
+        width: 20px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .format-text {
+        font-size: 20px;
+        vertical-align: middle;
+    }
+    </style>
+    <div style="margin-bottom:20px;">
+    <img src="https://img.icons8.com/color/48/000000/pdf.png" class="format-icon"/><span class="format-text">PDF</span>
+    <img src="https://img.icons8.com/color/48/000000/word.png" class="format-icon"/><span class="format-text">DOCX</span>
+    <img src="https://img.icons8.com/color/48/000000/powerpoint.png" class="format-icon"/><span class="format-text">PPTX</span>
+    <img src="https://img.icons8.com/color/48/000000/txt.png" class="format-icon"/><span class="format-text">TXT</span>
+    </div>
+    """, unsafe_allow_html=True)
     if uploaded_files:
         for uploaded_file in uploaded_files:
             if st.button(f"Translate {uploaded_file.name}", key=f"translate_{uploaded_file.name}"):
@@ -207,9 +267,9 @@ def document_translator():
                         os.remove(output_path)
 
 def text_translator():
-    st.title("Text Translator")
+    st.header("Text Translator", divider=True)
     st.write("Enter your text and select the target language for translation.")
-    st.warning("Ensure your target language differs from the source language for accurate results.")
+    st.warning("Ensure your target language differs from the source language for accurate results.", icon="⚠️")
 
     selected_language = st.selectbox(
         "Target Language:",
@@ -255,20 +315,37 @@ def text_translator():
 def main():
     add_custom_css()
 
-    # Display the logo and title at the top
-    st.image("images/4729_Brand_USA - HQ_Rare_RGB_Digital_Use.png", width=100)
-    st.title("Rare Translation Tool")
-    st.markdown("---")  # Separator
+    # Add the logo
+    logo_path = "images/logo.png"
+    if os.path.exists(logo_path):
+        logo = Image.open(logo_path)
+        # Calculate width to maintain aspect ratio with 75px height
+        aspect_ratio = logo.width / logo.height
+        new_width = int(75 * aspect_ratio)
+        
+        st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+        st.image(logo, width=new_width, use_column_width=False)  # Disable full-screen option
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.warning(f"Logo file not found at {logo_path}")
 
+    # Create a container for the header
+    st.markdown('<div class="header-container">', unsafe_allow_html=True)
+    
     # Create tabs
     tabs = st.tabs(["🏠HOME", "🗂️ DOCUMENT TRANSLATION", "💬 TEXT TRANSLATION"])
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # Content based on selected tab
+    st.markdown('<div class="main-content">', unsafe_allow_html=True)
     with tabs[0]:
         home()
     with tabs[1]:
         document_translator()
     with tabs[2]:
         text_translator()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
