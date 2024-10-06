@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from PIL import Image
 
 # Set page config at the very beginning, removing the full-screen option
-st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="wide", menu_items=None)
+st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="centered", menu_items=None)
 
 # Load environment variables
 load_dotenv("configs/app.env")
@@ -40,14 +40,7 @@ LANGUAGE_MAP = {
 
 def add_custom_css():
     st.markdown("""
-    <style>
-    /* Adjust overall layout */
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0.25rem 2rem;
-    }
-    
+    <style>    
     /* Target the tab container */
     [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
         background-color: transparent;
@@ -175,15 +168,12 @@ def add_custom_css():
     """, unsafe_allow_html=True)
 
 def home():
-    st.header("Key Features:", divider=True)
+    st.header("Key Features", divider=True)
     st.write("🗂️ **Document Translation**: Translate various file formats with ease.")
-    st.write("💬 **Text Translation**: Quick and accurate text snippet translations.")
+    st.write("📃 **Text Translation**: Quick and accurate text snippet translations.")
 
     st.header("How to Use:")
-    st.write("1. Choose your service from the tabs above.")
-    st.write("2. Select your target language.")
-    st.write("3. Upload a document or input your text.")
-    st.write("4. Click translate and watch the magic happen!")
+    st.write("1. Choose your service from the tabs above.\n2. Select your target language.\n3. Upload a document or input your text.\n4. Click translate and watch the magic happen!")
 
 def document_translator():
     st.header("Document Translator", divider=True)
@@ -333,7 +323,7 @@ def main():
     st.markdown('<div class="header-container">', unsafe_allow_html=True)
     
     # Create tabs
-    tabs = st.tabs(["🏠HOME", "🗂️ DOCUMENT TRANSLATION", "💬 TEXT TRANSLATION"])
+    tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
     
     st.markdown('</div>', unsafe_allow_html=True)
 
