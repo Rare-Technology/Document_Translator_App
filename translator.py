@@ -168,35 +168,17 @@ def add_custom_css():
     """, unsafe_allow_html=True)
 
 def home():
-    st.header("Key Features", divider=True)
+    st.subheader("Key Features", divider=True)
     st.write("🗂️ **Document Translation**: Translate various file formats with ease.")
     st.write("📃 **Text Translation**: Quick and accurate text snippet translations.")
 
-    st.header("How to Use:")
+    st.subheader("How to Use")
     st.write("1. Choose your service from the tabs above.\n2. Select your target language.\n3. Upload a document or input your text.\n4. Click translate and watch the magic happen!")
 
 def document_translator():
-    st.header("Document Translator", divider=True)
+    st.subheader("Document Translator", divider=True)
     st.write("Upload your file and select the target language for translation.")
-    st.warning("Ensure your target language differs from the source language for accurate results.", icon="⚠️")
-
-    selected_language = st.selectbox(
-        "Target Language:",
-        list(LANGUAGE_MAP.keys()),
-        index=0,
-        key="document_target_language"
-    )
-    target_language = LANGUAGE_MAP[selected_language]
-
-    uploaded_files = st.file_uploader(
-        "Choose Files",
-        accept_multiple_files=True,
-        type=['pdf', 'docx', 'pptx', 'txt'],
-        key="document_file_uploader"
-    )
-
-    st.header("Supported Formats:")
-
+    st.subheader("Supported Formats")
     # Using official icons for supported formats with adjusted size
     st.markdown("""
     <style>
@@ -218,6 +200,24 @@ def document_translator():
     <img src="https://img.icons8.com/color/48/000000/txt.png" class="format-icon"/><span class="format-text">TXT</span>
     </div>
     """, unsafe_allow_html=True)
+    
+    st.warning("Ensure your target language differs from the source language for accurate results.", icon="⚠️")
+
+    selected_language = st.selectbox(
+        "Target Language:",
+        list(LANGUAGE_MAP.keys()),
+        index=0,
+        key="document_target_language"
+    )
+    target_language = LANGUAGE_MAP[selected_language]
+
+    uploaded_files = st.file_uploader(
+        "Choose Files",
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'pptx', 'txt'],
+        key="document_file_uploader"
+    )
+
     if uploaded_files:
         for uploaded_file in uploaded_files:
             if st.button(f"Translate {uploaded_file.name}", key=f"translate_{uploaded_file.name}"):
@@ -257,7 +257,7 @@ def document_translator():
                         os.remove(output_path)
 
 def text_translator():
-    st.header("Text Translator", divider=True)
+    st.subheader("Text Translator", divider=True)
     st.write("Enter your text and select the target language for translation.")
     st.warning("Ensure your target language differs from the source language for accurate results.", icon="⚠️")
 
@@ -328,14 +328,22 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Content based on selected tab
-    st.markdown('<div class="main-content">', unsafe_allow_html=True)
     with tabs[0]:
         home()
     with tabs[1]:
         document_translator()
     with tabs[2]:
         text_translator()
-    st.markdown('</div>', unsafe_allow_html=True)
+    
+css = '''
+<style>
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+    font-size:1.2rem;
+    }
+</style>
+'''
+st.markdown(css, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
