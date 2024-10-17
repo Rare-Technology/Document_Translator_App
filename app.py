@@ -48,20 +48,24 @@ def get_user_info():
 def main():
     st.set_page_config(page_title="Streamlit SSO App")
 
+    # Check for callback
     if st.experimental_get_query_params().get("code"):
         callback()
 
+    # Check authentication status
     user_info = get_user_info()
 
     if user_info:
         st.write(f"Welcome, {user_info['displayName']}!")
         st.write("You are logged in.")
+        # Your main app logic goes here
         if st.button("Logout"):
             st.session_state.clear()
             st.experimental_rerun()
     else:
         st.write("Please log in to access the application.")
         login()
+        st.stop()  # Prevent the rest of the app from loading
 
 if __name__ == "__main__":
     main()
