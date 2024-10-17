@@ -1,0 +1,7 @@
+[server]
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+serverAddress = "translate.rare.org"
+serverPort = 8501
