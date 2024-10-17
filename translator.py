@@ -211,8 +211,8 @@ def login():
         st.error("SSO is not configured correctly. Please contact the administrator.")
 
 def callback():
-    if sso_config_complete and "code" in st.experimental_get_query_params():
-        code = st.experimental_get_query_params()["code"][0]
+    if sso_config_complete and "code" in st.query_params:
+        code = st.query_params["code"]
         result = msal_client.acquire_token_by_authorization_code(
             code,
             scopes=SCOPE,
@@ -220,7 +220,7 @@ def callback():
         )
         if "access_token" in result:
             st.session_state.token = result["access_token"]
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Authentication failed")
 
@@ -371,7 +371,7 @@ def main():
     add_custom_css()
 
     # Check for callback
-    if st.experimental_get_query_params().get("code"):
+    if "code" in st.query_params:
         callback()
 
     # Check authentication status
