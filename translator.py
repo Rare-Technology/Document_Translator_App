@@ -14,21 +14,38 @@ load_dotenv("configs/app.env")
 auth_key = os.getenv("DEEPL_API_KEY")
 
 # SSO Configuration
-CLIENT_ID = os.getenv("16ce6010-9959-42c4-bade-1d2f74b2f8c3")
-CLIENT_SECRET = os.getenv("42f87780-e706-4461-9f2a-96328617a566")
-TENANT_ID = os.getenv("4a179129-a51e-44b8-bc59-03e6e3b6d51d")
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-SCOPE = ["User.Read"]
-REDIRECT_PATH = "/auth/callback"
+CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+TENANT_ID = os.getenv("AZURE_TENANT_ID")
+
+# Check if SSO configuration is complete
+sso_config_complete = all([CLIENT_ID, CLIENT_SECRET, TENANT_ID])
+
+if sso_config_complete:
+    AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+    SCOPE = ["User.Read"]
+    REDIRECT_PATH = "/auth/callback"
+
+    # Initialize MSAL client
+    try:
+        msal_client = msal.ConfidentialClientApplication(
+            CLIENT_ID, authority=AUTHORITY,
+            client_credential=CLIENT_SECRET
+        )
+    except Exception as e:
+        st.error(f"Error initializing MSAL client: {str(e)}")
+        sso_config_complete = False
+else:
+    st.error("SSO configuration is incomplete. Please check your environment variables.")
 
 # Initialize DeepL translator
-translator = deepl.Translator(auth_key=auth_key)
-
-# Initialize MSAL client
-msal_client = msal.ConfidentialClientApplication(
-    CLIENT_ID, authority=AUTHORITY,
-    client_credential=CLIENT_SECRET
-)
+if auth_key:
+    try:
+        translator = deepl.Translator(auth_key=auth_key)
+    except Exception as e:
+        st.error(f"Error initializing DeepL translator: {str(e)}")
+else:
+    st.error("DeepL API key is missing. Please check your environment variables.")
 
 # Language mapping
 LANGUAGE_MAP = {
@@ -184,14 +201,17 @@ def add_custom_css():
     """, unsafe_allow_html=True)
     
 def login():
-    auth_url = msal_client.get_authorization_request_url(
-        SCOPE,
-        redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
-    )
-    st.markdown(f'<a href="{auth_url}" target="_self">Login with Microsoft</a>', unsafe_allow_html=True)
+    if sso_config_complete:
+        auth_url = msal_client.get_authorization_request_url(
+            SCOPE,
+            redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
+        )
+        st.markdown(f'<a href="{auth_url}" target="_self">Login with Microsoft</a>', unsafe_allow_html=True)
+    else:
+        st.error("SSO is not configured correctly. Please contact the administrator.")
 
 def callback():
-    if "code" in st.experimental_get_query_params():
+    if sso_config_complete and "code" in st.experimental_get_query_params():
         code = st.experimental_get_query_params()["code"][0]
         result = msal_client.acquire_token_by_authorization_code(
             code,
@@ -205,7 +225,7 @@ def callback():
             st.error("Authentication failed")
 
 def get_user_info():
-    if "token" in st.session_state:
+    if sso_config_complete and "token" in st.session_state:
         headers = {'Authorization': f'Bearer {st.session_state.token}'}
         response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
         if response.status_code == 200:
@@ -349,44 +369,63 @@ def text_translator():
 
 def main():
     add_custom_css()
+
+    # Check for callback
     if st.experimental_get_query_params().get("code"):
         callback()
 
     # Check authentication status
     user_info = get_user_info()
 
-    if user_info:
-        # User is authenticated, show the main application
-        # Add the logo
-        logo_path = "images/logo.png"
-        if os.path.exists(logo_path):
-            logo = Image.open(logo_path)
-            # Calculate width to maintain aspect ratio with 75px height
-            aspect_ratio = logo.width / logo.height
-            new_width = int(75 * aspect_ratio)
+    if sso_config_complete:
+        if user_info:
+            # User is authenticated, show the main application
+            # Add the logo
+            logo_path = "images/logo.png"
+            if os.path.exists(logo_path):
+                logo = Image.open(logo_path)
+                aspect_ratio = logo.width / logo.height
+                new_width = int(75 * aspect_ratio)
+                
+                st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+                st.image(logo, width=new_width, use_column_width=False)
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.warning(f"Logo file not found at {logo_path}")
+
+            # Create a container for the header
+            st.markdown('<div class="header-container">', unsafe_allow_html=True)
             
-            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-            st.image(logo, width=new_width, use_column_width=False)  # Disable full-screen option
+            # Create tabs
+            tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
+            
             st.markdown('</div>', unsafe_allow_html=True)
+
+            # Content based on selected tab
+            with tabs[0]:
+                home()
+            with tabs[1]:
+                document_translator()
+            with tabs[2]:
+                text_translator()
+            
+            # Logout button
+            if st.sidebar.button("Logout"):
+                st.session_state.clear()
+                st.experimental_rerun()
         else:
-            st.warning(f"Logo file not found at {logo_path}")
+            # User is not authenticated, show login page
+            st.title("Welcome to Rare Translator")
+            st.write("Please log in to access the application.")
+            login()
+    else:
+        st.error("SSO is not configured correctly. Please contact the administrator.")
+        # Optionally, you could still show parts of the application that don't require authentication
+        # For example:
+        st.title("Rare Translator")
+        st.write("Our translation services are currently unavailable due to a configuration issue. Please check back later.")
 
-    # Create a container for the header
-    st.markdown('<div class="header-container">', unsafe_allow_html=True)
-    
-    # Create tabs
-    tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Content based on selected tab
-    with tabs[0]:
-        home()
-    with tabs[1]:
-        document_translator()
-    with tabs[2]:
-        text_translator()
-    
+# Add this outside the main() function
 css = '''
 <style>
     .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
@@ -395,7 +434,6 @@ css = '''
 </style>
 '''
 st.markdown(css, unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     main()
