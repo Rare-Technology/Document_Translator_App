@@ -6,6 +6,10 @@ from PIL import Image
 import msal
 import requests
 import logging
+import time
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 # Set page config at the very beginning, removing the full-screen option
 st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="centered", menu_items=None)
@@ -213,6 +217,8 @@ def login():
 
 def callback():
     logging.info("Callback function called")
+    st.write("Processing login... Please wait.")
+    
     if sso_config_complete:
         if "code" in st.query_params:
             code = st.query_params["code"]
@@ -226,10 +232,14 @@ def callback():
                 if "access_token" in result:
                     st.session_state.token = result["access_token"]
                     logging.info("Access token acquired successfully")
+                    st.success("Login successful! Redirecting to main page...")
+                    time.sleep(2)  # Give user time to see the success message
+                    st.experimental_set_query_params()  # Clear the query parameters
                     st.rerun()
                 else:
                     logging.error(f"Failed to acquire token. Result: {result}")
                     st.error("Authentication failed: Unable to acquire token")
+                    st.write("Error details:", result.get("error_description", "No error description available"))
             except Exception as e:
                 logging.exception("Exception occurred during token acquisition")
                 st.error(f"Authentication failed: {str(e)}")
@@ -239,6 +249,8 @@ def callback():
     else:
         logging.error("SSO configuration is incomplete")
         st.error("SSO is not configured correctly. Please contact the administrator.")
+    
+    st.write("If you're not redirected automatically, [click here to go to the main page](https://translate.rare.org)")
 
 def get_user_info():
     if sso_config_complete and "token" in st.session_state:
@@ -388,7 +400,9 @@ def main():
 
     # Check for callback
     if "code" in st.query_params:
+        logging.info("Authorization code detected in query parameters")
         callback()
+        return  # Exit the function early to prevent rendering the rest of the app
 
     # Check authentication status
     user_info = get_user_info()
