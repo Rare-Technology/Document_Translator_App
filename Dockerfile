@@ -3,6 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app/Document_Translator_App
 
 RUN apt-get update && apt-get install -y \
+    pip install msal \
     build-essential \
     curl \
     software-properties-common \
