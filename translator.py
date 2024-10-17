@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import msal
 import requests
+import logging
 
 # Set page config at the very beginning, removing the full-screen option
 st.set_page_config(page_title="Rare Translator", page_icon="🌐", layout="centered", menu_items=None)
@@ -211,18 +212,33 @@ def login():
         st.error("SSO is not configured correctly. Please contact the administrator.")
 
 def callback():
-    if sso_config_complete and "code" in st.query_params:
-        code = st.query_params["code"]
-        result = msal_client.acquire_token_by_authorization_code(
-            code,
-            scopes=SCOPE,
-            redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
-        )
-        if "access_token" in result:
-            st.session_state.token = result["access_token"]
-            st.rerun()
+    logging.info("Callback function called")
+    if sso_config_complete:
+        if "code" in st.query_params:
+            code = st.query_params["code"]
+            logging.info(f"Received authorization code: {code[:10]}...")  # Log first 10 characters for security
+            try:
+                result = msal_client.acquire_token_by_authorization_code(
+                    code,
+                    scopes=SCOPE,
+                    redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
+                )
+                if "access_token" in result:
+                    st.session_state.token = result["access_token"]
+                    logging.info("Access token acquired successfully")
+                    st.rerun()
+                else:
+                    logging.error(f"Failed to acquire token. Result: {result}")
+                    st.error("Authentication failed: Unable to acquire token")
+            except Exception as e:
+                logging.exception("Exception occurred during token acquisition")
+                st.error(f"Authentication failed: {str(e)}")
         else:
-            st.error("Authentication failed")
+            logging.warning("No 'code' found in query parameters")
+            st.error("Authentication failed: No authorization code received")
+    else:
+        logging.error("SSO configuration is incomplete")
+        st.error("SSO is not configured correctly. Please contact the administrator.")
 
 def get_user_info():
     if sso_config_complete and "token" in st.session_state:
