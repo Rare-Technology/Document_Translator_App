@@ -1,6 +1,5 @@
 .env
 test.ipynb
 /configs
-app.py
 /output_files
 translator_v1.py
