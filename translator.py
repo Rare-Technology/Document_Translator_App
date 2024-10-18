@@ -398,72 +398,109 @@ def text_translator():
 def main():
     add_custom_css()
 
+    st.title("Rare Translator")
+
     # Check for callback
     if "code" in st.query_params:
-        logging.info("Authorization code detected in query parameters")
-        callback()
+        st.write("Processing login...")
+        code = st.query_params["code"]
+        try:
+            result = msal_client.acquire_token_by_authorization_code(
+                code,
+                scopes=SCOPE,
+                redirect_uri=f"https://translate.rare.org/auth/callback"
+            )
+            if "access_token" in result:
+                st.session_state.token = result["access_token"]
+                st.success("Login successful!")
+                time.sleep(2)  # Give user time to see the success message
+                st.experimental_set_query_params()  # Clear the query parameters
+                st.rerun()
+            else:
+                st.error("Failed to acquire token")
+                st.write("Error details:", result.get("error_description", "No error description available"))
+        except Exception as e:
+            st.error(f"An error occurred during login: {str(e)}")
         return  # Exit the function early to prevent rendering the rest of the app
 
     # Check authentication status
     user_info = get_user_info()
 
-    if sso_config_complete:
-        if user_info:
-            # User is authenticated, show the main application
-            # Add the logo
-            logo_path = "images/logo.png"
-            if os.path.exists(logo_path):
-                logo = Image.open(logo_path)
-                aspect_ratio = logo.width / logo.height
-                new_width = int(75 * aspect_ratio)
-                
-                st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-                st.image(logo, width=new_width, use_column_width=False)
-                st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.warning(f"Logo file not found at {logo_path}")
-
-            # Create a container for the header
-            st.markdown('<div class="header-container">', unsafe_allow_html=True)
+    if user_info:
+        # User is authenticated, show the main application
+        st.sidebar.write(f"Welcome, {user_info.get('displayName', 'User')}!")
+        if st.sidebar.button("Logout"):
+            st.session_state.clear()
+            st.rerun()
+        
+        # Add the logo
+        logo_path = "images/logo.png"
+        if os.path.exists(logo_path):
+            logo = Image.open(logo_path)
+            aspect_ratio = logo.width / logo.height
+            new_width = int(75 * aspect_ratio)
             
-            # Create tabs
-            tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
-            
+            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+            st.image(logo, width=new_width, use_column_width=False)
             st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Create tabs
+        tab1, tab2, tab3 = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
+        
+        with tab1:
+            st.header("Welcome to Rare Translator")
+            st.write("Choose a tab above to start translating documents or text.")
 
-            # Content based on selected tab
-            with tabs[0]:
-                home()
-            with tabs[1]:
-                document_translator()
-            with tabs[2]:
-                text_translator()
+        with tab2:
+            st.header("Document Translator")
+            selected_language = st.selectbox(
+                "Target Language:",
+                list(LANGUAGE_MAP.keys()),
+                key="document_target_language"
+            )
+            target_language = LANGUAGE_MAP[selected_language]
             
-            # Logout button
-            if st.sidebar.button("Logout"):
-                st.session_state.clear()
-                st.experimental_rerun()
-        else:
-            # User is not authenticated, show login page
-            st.title("Welcome to Rare Translator")
-            st.write("Please log in to access the application.")
-            login()
-    else:
-        st.error("SSO is not configured correctly. Please contact the administrator.")
-        # Optionally, you could still show parts of the application that don't require authentication
-        # For example:
-        st.title("Rare Translator")
-        st.write("Our translation services are currently unavailable due to a configuration issue. Please check back later.")
+            uploaded_file = st.file_uploader("Choose a file", type=['pdf', 'docx', 'txt'])
+            if uploaded_file is not None:
+                if st.button("Translate Document"):
+                    with st.spinner("Translating..."):
+                        # Here you would call your document translation function
+                        # For example: translated_document = translate_document(uploaded_file, target_language)
+                        st.success("Translation complete!")
+                        # Here you would provide a download link for the translated document
+                        # st.download_button("Download translated document", translated_document)
 
-# Add this outside the main() function
-css = '''
-<style>
-    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
-    font-size:1.2rem;
-    }
-</style>
-'''
-st.markdown(css, unsafe_allow_html=True)
+        with tab3:
+            st.header("Text Translator")
+            selected_language = st.selectbox(
+                "Target Language:",
+                list(LANGUAGE_MAP.keys()),
+                key="text_target_language"
+            )
+            target_language = LANGUAGE_MAP[selected_language]
+            
+            text_to_translate = st.text_area("Enter text to translate", height=150)
+            if st.button("Translate Text"):
+                if text_to_translate:
+                    with st.spinner("Translating..."):
+                        try:
+                            translated_text = translator.translate_text(text_to_translate, target_lang=target_language)
+                            st.success("Translation complete!")
+                            st.text_area("Translated Text", value=translated_text.text, height=150)
+                        except Exception as e:
+                            st.error(f"Translation failed: {str(e)}")
+                else:
+                    st.warning("Please enter some text to translate.")
+
+    else:
+        # User is not authenticated, show login page
+        st.write("Please log in to access the Rare Translator application.")
+        if st.button("Login"):
+            auth_url = msal_client.get_authorization_request_url(
+                SCOPE,
+                redirect_uri=f"https://translate.rare.org/auth/callback"
+            )
+            st.markdown(f'<meta http-equiv="refresh" content="0;url={auth_url}">', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
