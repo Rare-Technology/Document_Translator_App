@@ -16,7 +16,7 @@ RUN git clone https://github.com/Rare-Technology/Document_Translator_App.git .
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Install msal explicitly
+# Install msal
 RUN pip3 install --no-cache-dir msal
 
 # Make output directory in the container
@@ -26,10 +26,4 @@ EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
-# Create a startup script
-RUN echo '#!/bin/bash\n\
-streamlit run translator.py --server.enableCORS false --server.enableXsrfProtection false --server.baseUrlPath="/"\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
-# Use the startup script as the entry point
-ENTRYPOINT ["/app/start.sh"]
+ENTRYPOINT ["streamlit", "run", "translator.py"]
