@@ -389,7 +389,7 @@ def text_translator():
             if st.button("Copy to Clipboard", key="copy_to_clipboard"):
                 st.write("Text copied to clipboard!")
                 st.markdown(
-                    f"<script>navigator.clipboard.writeText(`{text_result.text}`)</script>",
+                    f"<script>navigator.clipboard.writeText({text_result.text})</script>",
                     unsafe_allow_html=True
                 )
         except Exception as e:
