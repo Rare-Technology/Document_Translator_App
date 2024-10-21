@@ -437,8 +437,9 @@ def main():
             with tabs[2]:
                 text_translator()
             
-            # Logout button
-            if st.sidebar.button("Logout"):
+            # Add a small logout button at the bottom of the page
+            st.markdown("<br><br>", unsafe_allow_html=True)  # Add some space
+            if st.button("Logout", key="logout_button", help="Click to log out"):
                 st.session_state.clear()
                 st.experimental_rerun()
         else:
