@@ -234,7 +234,7 @@ def callback():
                     logging.info("Access token acquired successfully")
                     st.success("Login successful! Redirecting to main page...")
                     time.sleep(2)  # Give user time to see the success message
-                    st.experimental_set_query_params()  # Clear the query parameters
+                    st.query_params.clear()  # Clear the query parameters
                     st.rerun()
                 else:
                     logging.error(f"Failed to acquire token. Result: {result}")
