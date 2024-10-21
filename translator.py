@@ -222,8 +222,6 @@ def callback():
     if sso_config_complete:
         if "code" in st.query_params:
             code = st.query_params["code"]
-            if isinstance(code, list):
-                code = code[0]  # Extract the code if it's in a list
             logging.info(f"Received authorization code: {code[:10]}...")  # Log first 10 characters for security
             try:
                 result = msal_client.acquire_token_by_authorization_code(
@@ -235,8 +233,9 @@ def callback():
                     st.session_state.token = result["access_token"]
                     logging.info("Access token acquired successfully")
                     st.success("Login successful! Redirecting to main page...")
+                    time.sleep(2)  # Give user time to see the success message
                     st.experimental_set_query_params()  # Clear the query parameters
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     logging.error(f"Failed to acquire token. Result: {result}")
                     st.error("Authentication failed: Unable to acquire token")
@@ -252,7 +251,6 @@ def callback():
         st.error("SSO is not configured correctly. Please contact the administrator.")
     
     st.write("If you're not redirected automatically, [click here to go to the main page](https://translate.rare.org)")
-
 
 def get_user_info():
     if sso_config_complete and "token" in st.session_state:
