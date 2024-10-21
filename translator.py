@@ -29,7 +29,7 @@ sso_config_complete = all([CLIENT_ID, CLIENT_SECRET, TENANT_ID])
 if sso_config_complete:
     AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
     SCOPE = ["User.Read"]
-    REDIRECT_PATH = "/auth/callback"
+    REDIRECT_PATH = "/"
 
     # Initialize MSAL client
     try:
