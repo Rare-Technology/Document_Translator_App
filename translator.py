@@ -217,45 +217,115 @@ def login():
 
 def callback():
     logging.info("Callback function called")
-    st.write("Processing login... Please wait.")
     
-    if sso_config_complete:
-        if "code" in st.query_params:
-            code = st.query_params["code"]
-            logging.info(f"Received authorization code: {code[:10]}...")  # Log first 10 characters for security
-            try:
-                result = msal_client.acquire_token_by_authorization_code(
-                    code,
-                    scopes=SCOPE,
-                    redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
-                )
-                if "access_token" in result:
-                    st.session_state.token = result["access_token"]
-                    logging.info("Access token acquired successfully")
-                    st.success("Login successful! Redirecting to main page...")
-                    time.sleep(2)  # Give user time to see the success message
-                    st.query_params.clear()  # Clear the query parameters
-                    st.rerun()
-                else:
-                    logging.error(f"Failed to acquire token. Result: {result}")
-                    st.error("Authentication failed: Unable to acquire token")
-                    st.write("Error details:", result.get("error_description", "No error description available"))
-            except Exception as e:
-                logging.exception("Exception occurred during token acquisition")
-                st.error(f"Authentication failed: {str(e)}")
-        else:
-            logging.warning("No 'code' found in query parameters")
-            st.error("Authentication failed: No authorization code received")
-    else:
+    if not sso_config_complete:
         logging.error("SSO configuration is incomplete")
         st.error("SSO is not configured correctly. Please contact the administrator.")
+        return
+
+    # Check if we already have a valid token
+    if "token" in st.session_state:
+        logging.info("Token already exists in session, redirecting to main page")
+        st.query_params.clear()
+        st.rerun()
+        return
+
+    # Check for authorization code
+    if "code" not in st.query_params:
+        logging.warning("No 'code' found in query parameters")
+        st.error("Authentication failed: No authorization code received")
+        return
+
+    code = st.query_params["code"]
     
-    st.write("If you're not redirected automatically, [click here to go to the main page](https://translate.rare.org)")
+    # Prevent code reuse by storing used codes
+    if "used_codes" not in st.session_state:
+        st.session_state.used_codes = set()
+
+    if code in st.session_state.used_codes:
+        logging.warning("Authorization code has already been used")
+        st.error("Session expired. Please log in again.")
+        st.query_params.clear()
+        time.sleep(2)
+        st.rerun()
+        return
+
+    # Add code to used codes set
+    st.session_state.used_codes.add(code)
+
+    try:
+        logging.info(f"Attempting to acquire token with authorization code: {code[:10]}...")
+        result = msal_client.acquire_token_by_authorization_code(
+            code,
+            scopes=SCOPE,
+            redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
+        )
+
+        if "access_token" in result:
+            st.session_state.token = result["access_token"]
+            if "refresh_token" in result:
+                st.session_state.refresh_token = result["refresh_token"]
+            logging.info("Access token acquired successfully")
+            st.success("Login successful! Redirecting to main page...")
+            st.query_params.clear()
+            time.sleep(1)
+            st.rerun()
+        else:
+            error_desc = result.get("error_description", "No error description available")
+            logging.error(f"Failed to acquire token. Result: {result}")
+            
+            if "AADSTS54005" in error_desc:
+                st.error("Session expired. Please log in again.")
+                st.session_state.clear()
+            else:
+                st.error("Authentication failed: Unable to acquire token")
+                st.write("Error details:", error_desc)
+            
+            st.query_params.clear()
+            time.sleep(2)
+            st.rerun()
+
+    except Exception as e:
+        logging.exception("Exception occurred during token acquisition")
+        st.error(f"Authentication failed: {str(e)}")
+        st.session_state.clear()
+        st.query_params.clear()
+        time.sleep(2)
+        st.rerun()
+
+# Add this helper function to refresh the token when needed
+def refresh_access_token():
+    if "refresh_token" not in st.session_state:
+        return False
+
+    try:
+        result = msal_client.acquire_token_by_refresh_token(
+            st.session_state.refresh_token,
+            scopes=SCOPE
+        )
+        
+        if "access_token" in result:
+            st.session_state.token = result["access_token"]
+            if "refresh_token" in result:
+                st.session_state.refresh_token = result["refresh_token"]
+            return True
+    except Exception as e:
+        logging.exception("Failed to refresh token")
+        return False
+
+    return False
 
 def get_user_info():
     if sso_config_complete and "token" in st.session_state:
         headers = {'Authorization': f'Bearer {st.session_state.token}'}
         response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
+        
+        if response.status_code == 401:  # Token expired
+            if refresh_access_token():
+                # Retry with new token
+                headers = {'Authorization': f'Bearer {st.session_state.token}'}
+                response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
+        
         if response.status_code == 200:
             return response.json()
     return None
