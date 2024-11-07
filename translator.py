@@ -7,7 +7,6 @@ import msal
 import requests
 import logging
 import time
-import pyperclip
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
