@@ -7,6 +7,7 @@ import msal
 import requests
 import logging
 import time
+import pyperclip
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -205,11 +206,18 @@ def add_custom_css():
     </style>
     """, unsafe_allow_html=True)
     
+def get_base_url():
+    # Check if we're running locally
+    if os.getenv('DEVELOPMENT') == 'true':
+        return "http://localhost:8501"
+    return "https://translate.rare.org"
+
 def login():
     if sso_config_complete:
+        base_url = get_base_url()
         auth_url = msal_client.get_authorization_request_url(
             SCOPE,
-            redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
+            redirect_uri=f"{base_url}{REDIRECT_PATH}"
         )
         st.markdown(f'<a href="{auth_url}" target="_self">Login with Microsoft</a>', unsafe_allow_html=True)
     else:
@@ -255,10 +263,11 @@ def callback():
 
     try:
         logging.info(f"Attempting to acquire token with authorization code: {code[:10]}...")
+        base_url = get_base_url()
         result = msal_client.acquire_token_by_authorization_code(
             code,
             scopes=SCOPE,
-            redirect_uri=f"https://translate.rare.org{REDIRECT_PATH}"
+            redirect_uri=f"{base_url}{REDIRECT_PATH}"
         )
 
         if "access_token" in result:
@@ -315,7 +324,23 @@ def refresh_access_token():
 
     return False
 
+def check_development():
+    dev_mode = os.getenv('DEVELOPMENT')
+    print(f"Development mode: {dev_mode}")
+    return dev_mode == 'true'
+
+def is_development():
+    return check_development()
+
 def get_user_info():
+    # Bypass authentication in development mode
+    if is_development():
+        return {
+            "displayName": "Development User",
+            "userPrincipalName": "dev@localhost"
+        }
+    
+    # Original authentication logic for production
     if sso_config_complete and "token" in st.session_state:
         headers = {'Authorization': f'Bearer {st.session_state.token}'}
         response = requests.get('https://graph.microsoft.com/v1.0/me', headers=headers)
@@ -383,41 +408,95 @@ def document_translator():
 
     if uploaded_files:
         for uploaded_file in uploaded_files:
+            file_size_mb = uploaded_file.size / (1024 * 1024)  # Convert to MB
+            if file_size_mb > 20:  # Warning for files larger than 20MB
+                st.warning(f"Large file detected ({file_size_mb:.1f}MB). Files with large images might need optimization for best results.", icon="⚠️")
             if st.button(f"Translate {uploaded_file.name}", key=f"translate_{uploaded_file.name}"):
                 try:
-                    with st.spinner("Translation in Progress..."):
-                        with open(f"./{uploaded_file.name}", "wb") as f:
-                            f.write(uploaded_file.getbuffer())
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Create temp directory if it doesn't exist
+                    temp_dir = "./temp_files"
+                    output_dir = "./output_files"
+                    for directory in [temp_dir, output_dir]:
+                        if not os.path.exists(directory):
+                            os.makedirs(directory)
 
-                        output_dir = "./output_files"
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
+                    # Save uploaded file in smaller chunks with progress tracking
+                    input_path = os.path.join(temp_dir, uploaded_file.name)
+                    file_size = uploaded_file.size
+                    CHUNK_SIZE = 512 * 1024  # 512KB chunks for more granular progress
+                    
+                    status_text.text("Preparing file for translation...")
+                    progress_bar.progress(0)
+                    
+                    bytes_written = 0
+                    with open(input_path, "wb") as f:
+                        while True:
+                            chunk = uploaded_file.read(CHUNK_SIZE)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            bytes_written += len(chunk)
+                            progress = min(bytes_written / file_size, 1.0)
+                            progress_bar.progress(progress)
 
-                        output_path = f"./output_files/{selected_language}_{uploaded_file.name}"
+                    status_text.text("Translating document...")
+                    progress_bar.progress(0.5)  # Show translation is in progress
+                    
+                    output_path = os.path.join(output_dir, f"{selected_language}_{uploaded_file.name}")
 
-                        translator.translate_document_from_filepath(
-                            input_path=f"./{uploaded_file.name}",
-                            output_path=output_path,
-                            target_lang=target_language
-                        )
+                    # Create a new translator instance for this specific translation
+                    # This ensures a fresh connection for each translation
+                    local_translator = deepl.Translator(auth_key=auth_key)
+                    
+                    # Translate document
+                    local_translator.translate_document_from_filepath(
+                        input_path=input_path,
+                        output_path=output_path,
+                        target_lang=target_language
+                    )
 
-                    st.success("Translation Complete! 🎉")
+                    progress_bar.progress(1.0)
+                    status_text.text("Translation complete! Preparing download...")
 
+                    # Stream the file download in chunks
                     with open(output_path, "rb") as file:
+                        file_data = file.read()
                         st.download_button(
                             label=f"Download Translated File",
-                            data=file,
+                            data=file_data,
                             file_name=f"{target_language}_{uploaded_file.name}",
                             mime='application/octet-stream',
                             key=f"download_{uploaded_file.name}"
                         )
+
+                    status_text.empty()
+                    progress_bar.empty()
+                    st.success("Translation Complete! 🎉")
+
                 except Exception as e:
                     st.error(f"Translation Error: {str(e)}")
+                    logging.error(f"Translation failed for {uploaded_file.name}: {str(e)}", exc_info=True)
+                    # Add more detailed error information
+                    if isinstance(e, deepl.exceptions.ConnectionException):
+                        st.error("Connection issue detected. This might be due to the file size or complexity. Try:")
+                        st.markdown("""
+                        1. Reducing image sizes in the document
+                        2. Splitting the document into smaller parts
+                        3. Converting images to a more compressed format
+                        """)
+
                 finally:
-                    if os.path.exists(uploaded_file.name):
-                        os.remove(uploaded_file.name)
-                    if os.path.exists(output_path):
-                        os.remove(output_path)
+                    # Clean up temporary files
+                    try:
+                        if os.path.exists(input_path):
+                            os.remove(input_path)
+                        if os.path.exists(output_path):
+                            os.remove(output_path)
+                    except Exception as e:
+                        logging.error(f"Error cleaning up temporary files: {str(e)}")
 
 def text_translator():
     st.subheader("Text Translator", divider=True)
@@ -448,81 +527,116 @@ def text_translator():
 
             st.success("Translation Complete! 🎉")
             st.subheader("Translated Text:")
-            st.text_area(
-                "",
-                value=text_result.text,
-                height=200,
-                disabled=True,
-                key="translated_text"
+            
+            # Inject the JavaScript and HTML together with matching styles
+            st.components.v1.html(
+                f"""
+                <div style="padding-right: 15px; margin-left:-6px;">
+                    <textarea id="translatedText" 
+                             style="width: 100%; 
+                                    height: 200px; 
+                                    margin-bottom: 10px; 
+                                    padding: 10px;
+                                    border-radius: 0.5rem;
+                                    background-color: #262730;
+                                    border: 1px solid #262730;
+                                    color: white;
+                                    font-family: 'Source Sans Pro', sans-serif;
+                                    font-size: 1rem;
+                                    font-weight: 400;
+                                    line-height: 1.5;" 
+                             readonly>{text_result.text}</textarea>
+                    <button onclick="copyText()" 
+                            onmouseover="this.style.backgroundColor='#1d2330'; this.style.borderColor='#4f535e'"
+                            onmouseout="this.style.backgroundColor='#131720'; this.style.borderColor='#41444C'"
+                            style="padding: 0.5rem 1rem; 
+                                   cursor: pointer; 
+                                   background-color: #131720;
+                                   border: 1px solid #41444C;
+                                   border-radius: 0.5rem;
+                                   color: white;
+                                   font-family: 'Source Sans Pro', sans-serif;
+                                   font-size: 1rem;
+                                   font-weight: 400;
+                                   line-height: 1.5;
+                                   margin: 0px;
+                                   user-select: none;
+                                   background-clip: padding-box;
+                                   transition: all 0.2s ease;">
+                        Copy Text
+                    </button>
+                </div>
+
+                <script>
+                    function copyText() {{
+                        var copyText = document.getElementById("translatedText");
+                        copyText.select();
+                        document.execCommand("copy");
+                    }}
+                </script>
+                """,
+                height=300
             )
 
-            if st.button("Copy to Clipboard", key="copy_to_clipboard"):
-                st.write("Text copied to clipboard!")
-                st.markdown(
-                    f"<script>navigator.clipboard.writeText({text_result.text})</script>",
-                    unsafe_allow_html=True
-                )
         except Exception as e:
             st.error(f"Translation Error: {str(e)}")
 
 def main():
     add_custom_css()
 
-    # Check for callback
-    if "code" in st.query_params:
-        callback()
+    # Skip authentication flow in development mode
+    if is_development():
+        user_info = get_user_info()  # Will return the development user
+    else:
+        # Check for callback
+        if "code" in st.query_params:
+            callback()
+        # Check authentication status
+        user_info = get_user_info()
 
-    # Check authentication status
-    user_info = get_user_info()
-
-    if sso_config_complete:
-        if user_info:
-            # User is authenticated, show the main application
-            # Add the logo
-            logo_path = "images/logo.png"
-            if os.path.exists(logo_path):
-                logo = Image.open(logo_path)
-                aspect_ratio = logo.width / logo.height
-                new_width = int(75 * aspect_ratio)
-                
-                st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-                st.image(logo, width=new_width, use_column_width=False)
-                st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.warning(f"Logo file not found at {logo_path}")
-
-            # Create a container for the header
-            st.markdown('<div class="header-container">', unsafe_allow_html=True)
+    # Rest of the main function remains the same
+    if is_development() or (sso_config_complete and user_info):
+        # User is authenticated or in development mode, show the main application
+        # Add the logo
+        logo_path = "images/logo.png"
+        if os.path.exists(logo_path):
+            logo = Image.open(logo_path)
+            aspect_ratio = logo.width / logo.height
+            new_width = int(75 * aspect_ratio)
             
-            # Create tabs
-            tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
-            
+            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+            st.image(logo, width=new_width, use_column_width=False)
             st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning(f"Logo file not found at {logo_path}")
 
-            # Content based on selected tab
-            with tabs[0]:
-                home()
-            with tabs[1]:
-                document_translator()
-            with tabs[2]:
-                text_translator()
-            
-            # Add a small logout button at the bottom of the page
-            st.markdown("<br><br>", unsafe_allow_html=True)  # Add some space
+        # Create a container for the header
+        st.markdown('<div class="header-container">', unsafe_allow_html=True)
+        
+        # Create tabs
+        tabs = st.tabs(["🏠 HOME", "🗂️ DOCUMENTS", "📃 TEXT"])
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Content based on selected tab
+        with tabs[0]:
+            home()
+        with tabs[1]:
+            document_translator()
+        with tabs[2]:
+            text_translator()
+        
+        # Only show logout button in production
+        if not is_development():
+            st.markdown("<br><br>", unsafe_allow_html=True)
             if st.button("Logout", key="logout_button", help="Click to log out"):
                 st.session_state.clear()
                 st.experimental_rerun()
-        else:
-            # User is not authenticated, show login page
-            st.title("Welcome to Rare Translator")
-            st.write("Please log in to access the application.")
-            login()
     else:
-        st.error("SSO is not configured correctly. Please contact the administrator.")
-        # Optionally, you could still show parts of the application that don't require authentication
-        # For example:
-        st.title("Rare Translator")
-        st.write("Our translation services are currently unavailable due to a configuration issue. Please check back later.")
+        # User is not authenticated in production, show login page
+        st.title("Welcome to Rare Translator")
+        st.write("Please log in to access the application.")
+        login()
 
 # Add this outside the main() function
 css = '''
